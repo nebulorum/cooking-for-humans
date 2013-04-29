@@ -21,24 +21,24 @@ object CookingStep1 {
   trait Cook[T] {
     def cookFor(guestCount: Int): T
 
-    def flatMap[S](f: T => Cook[S]):Cook[S] = ???
-    def map[S](f: T => S):Cook[S] = ???
+    def flatMap[S](f: T => Cook[S]): Cook[S] = ???
+
+    def map[S](f: T => S): Cook[S] = ???
   }
 
-    val appetizerCook = new Cook[List[Int]] {
-      def cookFor(guestCount: Int): List[Int] = ???
-    }
-    val dessertCook = new Cook[String] {
-      def cookFor(guestCount: Int): String = ???
-    }
-    val mainCourseCook = new Cook[List[String]] {
-      def cookFor(guestCount: Int) = ???
-    }
-
-    val mealCook = for {
-      appetizer <- appetizerCook
-      mainCourse <- mainCourseCook
-      dessert <- dessertCook
-    } yield (appetizer, mainCourse, dessert)
-    println(mealCook)
+  val appetizerCook = new Cook[List[Int]] {
+    def cookFor(guestCount: Int): List[Int] = ???
   }
+  val dessertCook = new Cook[String] {
+    def cookFor(guestCount: Int): String = ???
+  }
+  val mainCourseCook = new Cook[List[String]] {
+    def cookFor(guestCount: Int) = ???
+  }
+
+  val mealCook = for {
+    appetizer <- appetizerCook
+    mainCourse <- mainCourseCook
+    dessert <- dessertCook
+  } yield (appetizer, mainCourse, dessert)
+}
