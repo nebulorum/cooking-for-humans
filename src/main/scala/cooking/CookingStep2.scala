@@ -20,6 +20,7 @@ package cooking
 object CookingStep2 {
 
   trait Cook[T] {
+    self =>
     def cookFor(guestCount: Int): T
 
     def cookName: String = this.getClass.getCanonicalName
@@ -28,13 +29,24 @@ object CookingStep2 {
       println(cookName + ": " + message)
     }
 
-    def flatMap[S](f: T => Cook[S])(implicit manifest: Manifest[S]): Cook[S] = ???
+    def flatMap[S](f: T => Cook[S])(implicit manifest: Manifest[S]): Cook[S] = {
+      acknowledge("flatMapping to " + manifest)
 
-    def map[S](f: T => S)(implicit manifest: Manifest[S]): Cook[S] = ???
+      new Cook[S] {
+        def cookFor(guestCount: Int): S = f(self.cookFor(guestCount)).cookFor(guestCount)
+      }
+    }
+
+    def map[S](f: T => S)(implicit manifest: Manifest[S]): Cook[S] = {
+      acknowledge("mapping to " + manifest)
+      new Cook[S] {
+        def cookFor(guestCount: Int): S = f(self.cookFor(guestCount))
+      }
+    }
   }
 
   val appetizerCook = new Cook[List[Int]] {
-    def cookFor(guestCount: Int): List[Int] = (1 to guestCount).map(_ => guestCount).toList
+    def cookFor(guestCount: Int): List[Int] = (1 to guestCount).map(_ + guestCount).toList
 
     override def cookName: String = "Appetizer"
   }
@@ -59,6 +71,7 @@ object CookingStep2 {
     println(appetizerCook.cookFor(4))
     println(dessertCook.cookFor(4))
     println(mainCourseCook.cookFor(4))
+    println(mealCook.cookFor(4))
   }
 
 }
