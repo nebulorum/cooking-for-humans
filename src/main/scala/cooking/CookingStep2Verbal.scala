@@ -17,20 +17,33 @@ package cooking
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
 
-object CookingStep2 {
+object CookingStep2Verbal {
 
   trait Cook[T] {
     self =>
     def cookFor(guestCount: Int): T
 
+    def cookName: String = this.getClass.getCanonicalName
+
+    def acknowledge(message: String) {
+      println(cookName + ": " + message)
+    }
+
     def flatMap[S](f: T => Cook[S])(implicit manifest: Manifest[S]): Cook[S] = {
+      acknowledge("flatMapping to " + manifest)
+
       new Cook[S] {
-        def cookFor(guestCount: Int): S = f(self.cookFor(guestCount)).cookFor(guestCount)
+        def cookFor(guestCount: Int): S = {
+          self.acknowledge("cookFor in flatMap")
+          f(self.cookFor(guestCount)).cookFor(guestCount)
+        }
       }
     }
 
     def map[S](f: T => S)(implicit manifest: Manifest[S]): Cook[S] = {
+      acknowledge("mapping to " + manifest)
       new Cook[S] {
+        self.acknowledge("cookFor in map")
         def cookFor(guestCount: Int): S = f(self.cookFor(guestCount))
       }
     }
@@ -38,12 +51,18 @@ object CookingStep2 {
 
   val appetizerCook = new Cook[List[Int]] {
     def cookFor(guestCount: Int): List[Int] = (1 to guestCount).map(_ + guestCount).toList
+
+    override def cookName: String = "Appetizer"
   }
   val dessertCook = new Cook[String] {
     def cookFor(guestCount: Int): String = "(> " * guestCount
+
+    override def cookName: String = "Dessert"
   }
   val mainCourseCook = new Cook[List[String]] {
     def cookFor(guestCount: Int) = List("Meat", "Fish", "Chicken", "Shrimp", "Vegan").take(guestCount)
+
+    override def cookName: String = "MainCourse"
   }
 
   val mealCook = for {
@@ -53,9 +72,11 @@ object CookingStep2 {
   } yield (appetizer, mainCourse, dessert)
 
   def main(args: Array[String]) {
+    println("---- Each cook ----")
     println(appetizerCook.cookFor(4))
     println(dessertCook.cookFor(4))
     println(mainCourseCook.cookFor(4))
+    println("---- Will start cooking ----")
     println(mealCook.cookFor(4))
   }
 
