@@ -22,22 +22,13 @@ object CookingStep2Variant2 {
     self =>
     def cookFor(guestCount: Int): T
 
-    def cookName: String = this.getClass.getCanonicalName
-
-    def acknowledge(message: String) {
-      println(cookName + ": " + message)
-    }
-
     def flatMap[S](f: Int => Cook[S])(implicit manifest: Manifest[S]): Cook[S] = {
-      acknowledge("flatMapping to " + manifest)
-
       new Cook[S] {
         def cookFor(guestCount: Int): S = f((guestCount)).cookFor(guestCount)
       }
     }
 
     def map[S](f: Float => S)(implicit manifest: Manifest[S]): Cook[S] = {
-      acknowledge("mapping to " + manifest)
       new Cook[S] {
         def cookFor(guestCount: Int): S = f((guestCount))
       }
@@ -46,18 +37,14 @@ object CookingStep2Variant2 {
 
   val appetizerCook = new Cook[List[Int]] {
     def cookFor(guestCount: Int): List[Int] = (1 to guestCount).map(_ + guestCount).toList
-
-    override def cookName: String = "Appetizer"
   }
+
   val dessertCook = new Cook[String] {
     def cookFor(guestCount: Int): String = "(> " * guestCount
-
-    override def cookName: String = "Dessert"
   }
+
   val mainCourseCook = new Cook[List[String]] {
     def cookFor(guestCount: Int) = List("Meat", "Fish", "Chicken", "Shrimp", "Vegan").take(guestCount)
-
-    override def cookName: String = "MainCourse"
   }
 
   val mealCook = for {
@@ -72,5 +59,4 @@ object CookingStep2Variant2 {
     println(mainCourseCook.cookFor(4))
     println(mealCook.cookFor(4))
   }
-
 }

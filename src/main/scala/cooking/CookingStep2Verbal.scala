@@ -1,5 +1,3 @@
-package cooking
-
 /*
  * Copyright (C) 2013-2013 - Thomas Santana <tms@exnebula.org>
  *
@@ -16,6 +14,7 @@ package cooking
  * You should have received a copy of the GNU General Public License
  * along with this program.  If not, see <http://www.gnu.org/licenses/>
  */
+package cooking
 
 object CookingStep2Verbal {
 
@@ -44,23 +43,35 @@ object CookingStep2Verbal {
       acknowledge("mapping to " + manifest)
       new Cook[S] {
         self.acknowledge("cookFor in map")
+
         def cookFor(guestCount: Int): S = f(self.cookFor(guestCount))
       }
     }
   }
 
   val appetizerCook = new Cook[List[Int]] {
-    def cookFor(guestCount: Int): List[Int] = (1 to guestCount).map(_ + guestCount).toList
+    def cookFor(guestCount: Int): List[Int] = {
+      acknowledge("execute cook")
+      (1 to guestCount).map(_ + guestCount).toList
+    }
 
     override def cookName: String = "Appetizer"
   }
+
   val dessertCook = new Cook[String] {
-    def cookFor(guestCount: Int): String = "(> " * guestCount
+    def cookFor(guestCount: Int): String = {
+      acknowledge("execute cook")
+      "(> " * guestCount
+    }
 
     override def cookName: String = "Dessert"
   }
+
   val mainCourseCook = new Cook[List[String]] {
-    def cookFor(guestCount: Int) = List("Meat", "Fish", "Chicken", "Shrimp", "Vegan").take(guestCount)
+    def cookFor(guestCount: Int) = {
+      acknowledge("execute cook")
+      List("Meat", "Fish", "Chicken", "Shrimp", "Vegan").take(guestCount)
+    }
 
     override def cookName: String = "MainCourse"
   }
