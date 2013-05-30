@@ -59,5 +59,4 @@ object CookingStep2Variant {
     println(mainCourseCook.cookFor(4))
     println(mealCook.cookFor(4))
   }
-
 }

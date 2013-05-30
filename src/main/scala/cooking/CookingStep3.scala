@@ -16,35 +16,45 @@
  */
 package cooking
 
-object CookingStep2Variant2 {
+object CookingStep3 {
+
+  sealed trait Job[T]
+
+  case class Done[T](food: T) extends Job[T]
+
+  case class NextStation[T](nextCook: Cook[T]) extends Job[T]
 
   trait Cook[T] {
     self =>
-    def cookFor(guestCount: Int): T
+    def cookFor(guestCount: Int): Job[T]
 
-    def flatMap[S](f: Int => Cook[S])(implicit manifest: Manifest[S]): Cook[S] = {
+    def flatMap[S](f: T => Cook[S])(implicit manifest: Manifest[S]): Cook[S] = {
       new Cook[S] {
-        def cookFor(guestCount: Int): S = f((guestCount)).cookFor(guestCount)
+        def cookFor(guestCount: Int): Job[S] = self.cookFor(guestCount) match {
+          case Done(food) => NextStation(f(food))
+          case NextStation(nextCook) => NextStation(nextCook flatMap f)
+        }
       }
     }
 
-    def map[S](f: Float => S)(implicit manifest: Manifest[S]): Cook[S] = {
+    def map[S](f: T => S)(implicit manifest: Manifest[S]): Cook[S] = {
       new Cook[S] {
-        def cookFor(guestCount: Int): S = f((guestCount))
+        def cookFor(guestCount: Int): Job[S] = self.cookFor(guestCount) match {
+          case Done(food) => Done(f(food))
+          case NextStation(nextCook) => NextStation(nextCook map f)
+        }
       }
     }
   }
 
   val appetizerCook = new Cook[List[Int]] {
-    def cookFor(guestCount: Int): List[Int] = (1 to guestCount).map(_ + guestCount).toList
+    def cookFor(guestCount: Int): Job[List[Int]] = Done((1 to guestCount).map(_ + guestCount).toList)
   }
-
   val dessertCook = new Cook[String] {
-    def cookFor(guestCount: Int): String = "(> " * guestCount
+    def cookFor(guestCount: Int): Job[String] = Done("(> " * guestCount)
   }
-
   val mainCourseCook = new Cook[List[String]] {
-    def cookFor(guestCount: Int) = List("Meat", "Fish", "Chicken", "Shrimp", "Vegan").take(guestCount)
+    def cookFor(guestCount: Int) = Done(List("Meat", "Fish", "Chicken", "Shrimp", "Vegan").take(guestCount))
   }
 
   val mealCook = for {
@@ -58,5 +68,14 @@ object CookingStep2Variant2 {
     println(dessertCook.cookFor(4))
     println(mainCourseCook.cookFor(4))
     println(mealCook.cookFor(4))
+    val x:AnyRef = mealCook.cookFor(4) match {
+      case NextStation(next) => next.cookFor(3) match {
+        case NextStation(next2) => next2.cookFor(5)
+        case _ => null
+      }
+      case _ => null
+    }
+    println(x)
   }
+
 }
