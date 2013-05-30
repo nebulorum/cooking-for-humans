@@ -18,36 +18,36 @@ package cooking
 
 object CookingStep2Variant {
 
-  trait Cook[T,X] {
+  trait Cook[T] {
     self =>
     def cookFor(guestCount: Int): T
 
-    def flatMap[S,Y](f: T => Cook[S,Y])(implicit manifest: Manifest[S]): Cook[S,Y] = {
-      new Cook[S,Y] {
-        def cookFor(guestCount: Int): S = f(self.cookFor(guestCount)).cookFor(guestCount)
+    def flatMap[S](f: Int => Cook[S])(implicit manifest: Manifest[S]): Cook[S] = {
+      new Cook[S] {
+        def cookFor(guestCount: Int): S = f((guestCount)).cookFor(guestCount)
       }
     }
 
-    def map[S,Y](f: T => S)(implicit manifest: Manifest[S]): Cook[S,Y] = {
-      new Cook[S,Y] {
-        def cookFor(guestCount: Int): S = f(self.cookFor(guestCount))
+    def map[S](f: Float => S)(implicit manifest: Manifest[S]): Cook[S] = {
+      new Cook[S] {
+        def cookFor(guestCount: Int): S = f((guestCount))
       }
     }
   }
 
-  val appetizerCook = new Cook[List[Int], Int] {
+  val appetizerCook = new Cook[List[Int]] {
     def cookFor(guestCount: Int): List[Int] = (1 to guestCount).map(_ + guestCount).toList
   }
 
-  val dessertCook = new Cook[String,Int] {
+  val dessertCook = new Cook[String] {
     def cookFor(guestCount: Int): String = "(> " * guestCount
   }
 
-  val mainCourseCook = new Cook[List[String],Boolean] {
+  val mainCourseCook = new Cook[List[String]] {
     def cookFor(guestCount: Int) = List("Meat", "Fish", "Chicken", "Shrimp", "Vegan").take(guestCount)
   }
 
-  val mealCook:Cook[_,String] = for {
+  val mealCook = for {
     appetizer <- appetizerCook
     mainCourse <- mainCourseCook
     dessert <- dessertCook
