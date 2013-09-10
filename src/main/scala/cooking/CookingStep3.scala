@@ -28,6 +28,13 @@ object CookingStep3 {
     self =>
     def cookFor(guestCount: Int): Job[T]
 
+    def cookForThese(request:List[Int]):Option[T] = {
+      self.cookFor(request.head) match {
+        case Done(value) => Some(value)
+        case NextStation(station) => station.cookForThese(request.tail)
+      }
+    }
+
     def flatMap[S](f: T => Cook[S])(implicit manifest: Manifest[S]): Cook[S] = {
       new Cook[S] {
         def cookFor(guestCount: Int): Job[S] = self.cookFor(guestCount) match {
@@ -68,14 +75,7 @@ object CookingStep3 {
     println(dessertCook.cookFor(4))
     println(mainCourseCook.cookFor(4))
     println(mealCook.cookFor(4))
-    val x:AnyRef = mealCook.cookFor(4) match {
-      case NextStation(next) => next.cookFor(3) match {
-        case NextStation(next2) => next2.cookFor(5)
-        case _ => null
-      }
-      case _ => null
-    }
-    println(x)
+    println(mealCook.cookForThese(List(4,3,5)))
   }
 
 }
