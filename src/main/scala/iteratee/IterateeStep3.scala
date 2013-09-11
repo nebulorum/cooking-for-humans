@@ -16,7 +16,7 @@
  */
 package iteratee
 
-object IterateeStep1 {
+object IterateeStep3 {
 
   sealed trait ConsumerState[I, T]
 
@@ -24,20 +24,28 @@ object IterateeStep1 {
 
   case class Continue[I, T](next: Consumer[I, T]) extends ConsumerState[I, T]
 
+  case class Error[I, T](error: Throwable) extends ConsumerState[I, T]
+
   trait Consumer[I, T] {
     self =>
     def consume(input: I): ConsumerState[I, T]
 
-    def consumeAll(inputs: List[I]): Option[T] = {
-      self.consume(inputs.head) match {
-        case Done(value) => Some(value)
-        case Continue(next) => next.consumeAll(inputs.tail)
+    def consumeAll(inputs: List[I]): Either[Throwable, T] = {
+      if (inputs.isEmpty) {
+        Left(new RuntimeException("Premature end of stream"))
+      } else {
+        self.consume(inputs.head) match {
+          case Done(value) => Right(value)
+          case Error(error) => Left(error)
+          case Continue(next) => next.consumeAll(inputs.tail)
+        }
       }
     }
 
     def flatMap[S](f: T => Consumer[I, S])(implicit manifest: Manifest[S]): Consumer[I, S] = {
       new Consumer[I, S] {
         def consume(guestCount: I): ConsumerState[I, S] = self.consume(guestCount) match {
+          case Error(e) => Error(e)
           case Done(value) => Continue(f(value))
           case Continue(nextCook) => Continue(nextCook flatMap f)
         }
@@ -48,6 +56,7 @@ object IterateeStep1 {
       new Consumer[I, S] {
         def consume(guestCount: I): ConsumerState[I, S] = self.consume(guestCount) match {
           case Done(value) => Done(f(value))
+          case Error(e) => Error(e)
           case Continue(nextCook) => Continue(nextCook map f)
         }
       }
@@ -55,13 +64,22 @@ object IterateeStep1 {
   }
 
   val readHeader = new Consumer[String, String] {
-    def consume(input: String): ConsumerState[String, String] = Done(input.substring(2))
+    def consume(input: String): ConsumerState[String, String] =
+      if (input.startsWith("# ")) Done(input.substring(2))
+      else Error(new Exception("Not header line"))
   }
-  val readBody = new Consumer[String, String] {
-    def consume(input: String): ConsumerState[String, String] = Done(input.substring(2))
+  val readBody = recurseBody(Nil)
+
+  def recurseBody(accumulated: List[String]): Consumer[String, List[String]] = new Consumer[String, List[String]] {
+    def consume(input: String): ConsumerState[String, List[String]] =
+      if (input.startsWith(". ")) Continue(recurseBody(input.substring(2) :: accumulated))
+      else Done(accumulated)
   }
+
   val readTrailer = new Consumer[String, String] {
-    def consume(input: String): ConsumerState[String, String] = Done(input.substring(2))
+    def consume(input: String): ConsumerState[String, String] =
+      if (input.startsWith("! ")) Done(input.substring(2))
+      else Error(new Exception("Not trailer line"))
   }
 
   val readMessage = for {
@@ -71,16 +89,17 @@ object IterateeStep1 {
   } yield (head, body, tail)
 
   def main(args: Array[String]) {
-    val msg = List(
+    val message = List(
       "# Header",
-      ". Body",
+      ". Body 1",
+      ". Body 2",
+      ". Body 3",
       "! Trailer"
     )
-    println(readHeader.consume(msg(0)))
-    println(readBody.consume(msg(1)))
-    println(readTrailer.consume(msg(2)))
-    println(readMessage.consumeAll(msg))
-    println(readMessage.consumeAll(msg.reverse))
+    println("Reading a messages will fail")
+    println(readMessage.consumeAll(message))
+    println("Two trailer fixes problem")
+    println(readMessage.consumeAll(message ::: List("! Trailer 2")))
   }
 
 }
