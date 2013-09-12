@@ -73,9 +73,8 @@ object IterateeStep4 {
   val readHeader = new Consumer[String, String] {
     def consume(input: Input[String]): ConsumerState[String, String] =
       input match {
-        case Chunk(c) =>
-          if (c.startsWith("# ")) Done(c.substring(2), Empty)
-          else Error(new Exception("Not header line"))
+        case Chunk(c) if c.startsWith("# ") => Done(c.substring(2), Empty)
+        case Chunk(c) => Error(new Exception("Not header line"))
         case Empty => Continue(this, Empty)
       }
   }
@@ -84,9 +83,8 @@ object IterateeStep4 {
   def recurseBody(accumulated: List[String]): Consumer[String, List[String]] = new Consumer[String, List[String]] {
     def consume(input: Input[String]): ConsumerState[String, List[String]] =
       input match {
-        case Chunk(c) =>
-          if (c.startsWith(". ")) Continue(recurseBody(c.substring(2) :: accumulated), Empty)
-          else Done(accumulated, input)
+        case Chunk(c) if c.startsWith(". ") => Continue(recurseBody(c.substring(2) :: accumulated), Empty)
+        case Chunk(c) => Done(accumulated.reverse, input)
         case Empty => Continue(this, Empty)
       }
   }
@@ -94,9 +92,8 @@ object IterateeStep4 {
   val readTrailer = new Consumer[String, String] {
     def consume(input: Input[String]): ConsumerState[String, String] =
       input match {
-        case Chunk(c) =>
-          if (c.startsWith("! ")) Done(c.substring(2), Empty)
-          else Error(new Exception("Not trailer line"))
+        case Chunk(c) if c.startsWith("! ") => Done(c.substring(2), Empty)
+        case Chunk(c) => Error(new Exception("Not trailer line"))
         case Empty => Continue(this, Empty)
       }
   }
@@ -113,8 +110,8 @@ object IterateeStep4 {
       ". Body 1",
       ". Body 2",
       ". Body 3",
-      "! Trailer"
-    )
+      "! Trailer")
+
     println(readMessage.consumeAll(msg))
     println(readMessage.consumeAll(List("# a head", "! a tail")))
     println("Stall input")

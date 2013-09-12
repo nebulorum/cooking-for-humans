@@ -84,20 +84,18 @@ object IterateeStep5 {
   def recursiveBodyRead(accumulated: List[String]): Consumer[String, List[String]] = new Consumer[String, List[String]] {
     def consume(input: Input[String]): ConsumerState[String, List[String]] =
       input match {
-        case Chunk(c) =>
-          if (c.startsWith(". ")) Continue(recursiveBodyRead(c.substring(2) :: accumulated), Empty)
-          else Done(accumulated, input)
+        case Chunk(c) if c.startsWith(". ") => Continue(recursiveBodyRead(c.substring(2) :: accumulated), Empty)
+        case Chunk(c) => Done(accumulated.reverse, input)
         case Empty => Continue(this, Empty)
-        case EOF => Done(accumulated, EOF)
+        case EOF => Done(accumulated.reverse, EOF)
       }
   }
 
   val readTrailer = new Consumer[String, String] {
     def consume(input: Input[String]): ConsumerState[String, String] =
       input match {
-        case Chunk(c) =>
-          if (c.startsWith("! ")) Done(c.substring(2), Empty)
-          else Error(new Exception("Not trailer line"))
+        case Chunk(c) if c.startsWith("! ") => Done(c.substring(2), Empty)
+        case Chunk(c) => Error(new Exception("Not trailer line"))
         case Empty => Continue(this, Empty)
         case EOF => Error(new Exception("Trailer expected"))
       }
@@ -106,9 +104,8 @@ object IterateeStep5 {
   val readOptionalTrailer = new Consumer[String, Option[String]] {
     def consume(input: Input[String]): ConsumerState[String, Option[String]] =
       input match {
-        case Chunk(c) =>
-          if (c.startsWith("! ")) Done(Some(c.substring(2)), Empty)
-          else Error(new Exception("Not trailer line"))
+        case Chunk(c) if c.startsWith("! ") => Done(Some(c.substring(2)), Empty)
+        case Chunk(c) => Error(new Exception("Not trailer line"))
         case Empty => Continue(this, Empty)
         case EOF => Done(None, EOF)
       }
@@ -132,8 +129,7 @@ object IterateeStep5 {
       ". Body 1",
       ". Body 2",
       ". Body 3",
-      "! Trailer"
-    )
+      "! Trailer")
 
     println(readMessage.consumeAll(msg))
     println(readMessage.consumeAll(msg.init))
