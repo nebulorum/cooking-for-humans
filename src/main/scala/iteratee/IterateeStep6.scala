@@ -75,6 +75,8 @@ object IterateeStep6 {
 
   val readSingleBody = matchLine("Body", ". ")
 
+  val readSingleBodyHeader = matchLine("Body Header", "- ")
+
   val readTrailer = matchLine("Trailer", "! ")
 
   def matchLine(name: String, prefix: String) = new Consumer[String, String] {
@@ -87,16 +89,15 @@ object IterateeStep6 {
       }
   }
 
-  def repeat[I, T](consumer: Consumer[I, T]) = repeatRecursive(consumer, consumer, Nil)
+  def repeat[I, T](consumer: Consumer[I, T]) = repeatRecursive(consumer, Nil)
 
-  def repeatRecursive[I, T](consumer: Consumer[I, T], next: Consumer[I, T], accumulated: List[T]): Consumer[I, List[T]] =
+  def repeatRecursive[I, T](consumer: Consumer[I, T], accumulated: List[T]): Consumer[I, List[T]] =
     new Consumer[I, List[T]] {
       def consume(input: Input[I]): ConsumerState[I, List[T]] =
-        next.consume(input) match {
-          case Error(e) if consumer == next => Done(accumulated.reverse, input)
-          case Error(e) => Error(e)
-          case Continue(step, remainder) => Continue(repeatRecursive(consumer, step, accumulated), remainder)
-          case Done(value, remainder) => Continue(repeatRecursive(consumer, consumer, value :: accumulated), remainder)
+        consumer.consume(input) match {
+          case Error(e) => Done(accumulated.reverse, input)
+          case Continue(step, remainder) => Continue(repeatRecursive(consumer, accumulated), remainder)
+          case Done(value, remainder) => Continue(repeatRecursive(consumer, value :: accumulated), remainder)
         }
     }
 
@@ -123,7 +124,7 @@ object IterateeStep6 {
     tail <- readTrailer
   } yield (head, body, tail)
 
-  val readMessageWithOptional = for {
+  val readMessageWithOptionalTrailer = for {
     head <- readHeader
     body <- repeat(readSingleBody)
     tail <- optional(readTrailer)
@@ -135,6 +136,24 @@ object IterateeStep6 {
     tail <- optional(readTrailer)
   } yield (head, body, tail)
 
+  val readNestedBody = for {
+    bodyHeader <- readSingleBodyHeader
+    content <- repeat(readSingleBody)
+  }  yield (bodyHeader, content)
+
+  val readMessageWith2Bodies = for {
+    head <- readHeader
+    body <- repeat(readSingleBody)
+    body2 <- repeat(readSingleBodyHeader)
+    tail <- optional(readTrailer)
+  } yield (head, body, body2, tail)
+
+  val readNestedMessage = for {
+    head <- readHeader
+    body <- repeat(readNestedBody)
+    tail <- optional(readTrailer)
+  } yield (head, body, tail)
+
   def main(args: Array[String]) {
     val msg = List(
       "# Header",
@@ -143,15 +162,45 @@ object IterateeStep6 {
       ". Body 3",
       "! Trailer")
 
+    val msg2 = List(
+      "# Header",
+      ". Body 1",
+      ". Body 2",
+      ". Body 3",
+      "- B2 1",
+      "- B2 2",
+      "! Trailer")
+    
+    val nestedMsg = List(
+      "# Header",
+      "- Body 1",
+      ". B1.c1",
+      ". B1.c2",
+      "- Body 2",
+      ". B2.c1",
+      "! Trailer")
+
     println(readMessage.consumeAll(msg))
     println(readMessage.consumeAll(msg.init))
-    println(readMessageWithOptional.consumeAll(msg))
-    println(readMessageWithOptional.consumeAll(msg.init))
-    println(readMessageWithOptional.consumeAll(msg.take(1)))
-    println(readMessageWithOptional.consumeAll(Nil))
+    println(readMessageWithOptionalTrailer.consumeAll(msg))
+    println(readMessageWithOptionalTrailer.consumeAll(msg.init))
+    println(readMessageWithOptionalTrailer.consumeAll(msg.take(1)))
+    println(readMessageWithOptionalTrailer.consumeAll(Nil))
+
     println("---- Alternate ----")
     println(readMessageWithOptionalAlternateHeader.consumeAll(msg))
-    println(readMessageWithOptionalAlternateHeader.consumeAll("## Cabecalho" :: msg.tail))
+    println(readMessageWithOptionalAlternateHeader.consumeAll("## New Header" :: msg.tail))
+
+    println("--- 2 type of body ----")
+    println(readMessageWith2Bodies.consumeAll(msg))
+    println(readMessageWith2Bodies.consumeAll(msg2))
+    println(readMessageWith2Bodies.consumeAll(msg2.init))
+    println(readMessageWith2Bodies.consumeAll(msg2.take(1)))
+
+    println("--- Nested body, fail! ----")
+    println(readNestedMessage.consumeAll(nestedMsg))
+
+
   }
 
 }
