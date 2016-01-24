@@ -103,9 +103,7 @@ object IterateeStep8 {
     new Consumer[I, List[T]] {
       def consume(input: Input[I]): ConsumerState[I, List[T]] =
         step.consume(input) match {
-          case Error(null) =>
-            //            println("--> " + input)
-            Done(accumulated.reverse, input)
+          case Error(null) => Done(accumulated.reverse, input)
           case Error(e) => Error(e)
           case Continue(nextStep, remainder) => Continue(repeatRecursive(groupStart, nextStep, accumulated), remainder)
           case Done(value, remainder) => Continue(repeatRecursive(groupStart, groupStart, value :: accumulated), remainder)
